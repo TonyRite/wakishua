@@ -2,6 +2,20 @@
 
 Architecture and product decisions with their reasoning and trade-offs. Newest first.
 
+## D-009 — Deploy on Vercel serverless + Turso (libSQL), not the Express server
+**Decision:** Production runs the frontend as static Vite output on Vercel with the public posts API
+as **Vercel serverless functions** (`api/posts.js`, `api/geocode/reverse.js`) backed by **Turso**
+(libSQL, SQLite-compatible cloud). The `server/` Express app stays for local dev / the legacy
+auth+chat flow. See [DEPLOYMENT.md](./DEPLOYMENT.md).
+**Why:** Vercel can't durably run Express (no long-lived process) or a SQLite **file** (ephemeral
+FS), and the WebSocket server is unused by the posts model. Serverless functions autoscale to the
+~5,000-user target with zero ops, and Turso keeps us on SQL/SQLite semantics (near-identical queries)
+so the port was small. Turso has a usable free tier.
+**Trade-off:** The posts endpoints now exist **twice** (Express for local, functions for prod) and
+can drift — mitigated by keeping them tiny and identical, and by the option to run `vercel dev`
+locally. Serverless has no shared memory, so rate limiting moved to a DB-backed per-IP check
+(`ip_hash`) and geocode caching is per-warm-instance + Vercel edge cache.
+
 ## D-008 — Pivot the MVP to a no-auth public "posts" board (requests + offers)
 **Decision:** Add a second, simpler model alongside the auth/match/chat system. Anyone — with no
 account — can publish a **request** ("I need help") or an **offer** ("I will clean") that carries

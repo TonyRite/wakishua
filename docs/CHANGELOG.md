@@ -20,6 +20,9 @@ All notable changes to Wakishua. Newest first.
 - Public endpoints `POST /api/posts` (rate-limited) and `GET /api/posts` (bounding-box geo feed).
 - `PostCard` component; segmented filter control, offer card, and FAB styles.
 - New EN/SW strings for the posting/browsing flow.
+- **Vercel + Turso deployment**: serverless functions (`api/posts.js`, `api/geocode/reverse.js`) on
+  libSQL (`lib/turso.js`), `vercel.json`, `.env.example`, and [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
+  Serverless-safe per-IP rate limit (`ip_hash`) and opportunistic expiry sweep. See DecisionLog D-009.
 
 ### Fixed
 - **Content hidden behind the bottom navigation** (the reported bug): `#app-content` now reserves
