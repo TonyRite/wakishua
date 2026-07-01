@@ -1,0 +1,23 @@
+{
+  "short_name": "Wakishua",
+  "name": "Wakishua — Instant Local Help",
+  "description": "Get help from a trusted helper nearby — cleaning, cooking, laundry, repairs and more. Fast, local, on demand.",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "productivity", "utilities"],
+  "icons": [
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#F4F7FA",
+  "theme_color": "#0B1E36",
+  "display": "standalone",
+  "orientation": "portrait",
+  "shortcuts": [
+    { "name": "Post a request", "short_name": "Post", "url": "/?action=post" },
+    { "name": "Browse posts", "short_name": "Browse", "url": "/?action=browse" }
+  ]
+}
