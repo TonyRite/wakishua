@@ -1265,6 +1265,30 @@ input:checked + .slider:before {
   margin-top: 4px;
 }
 
+.post-type-note {
+  margin-bottom: 12px;
+}
+
+/* Inline button spinner (submit-in-progress) */
+.btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btnspin 0.7s linear infinite;
+}
+@keyframes btnspin {
+  to { transform: rotate(360deg); }
+}
+
 /* "Offer a service" prompt block on home */
 .offer-card {
   background-color: var(--color-seafoam);

@@ -12,12 +12,23 @@ import MapPicker from './components/MapPicker.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
 
 const CONTACT_STORE = 'wakishua_contact';
+const COORDS_STORE = 'wakishua_coords';
+
+// Last known location (from a previous visit) so we default to the user's real
+// area immediately, before a fresh GPS fix lands. Falls back to Dar es Salaam.
+function initialCoords() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COORDS_STORE) || 'null');
+    if (saved && typeof saved.lat === 'number' && typeof saved.lon === 'number') return saved;
+  } catch { /* ignore */ }
+  return { lat: -6.7924, lon: 39.2083 };
+}
 
 export default function App() {
   const { t, lang } = useT();
 
   // Geolocation (user's current position)
-  const [coords, setCoords] = useState({ lat: -6.7924, lon: 39.2083 });
+  const [coords, setCoords] = useState(initialCoords);
 
   // Navigation
   const [activeView, setActiveView] = useState('home');
@@ -50,6 +61,7 @@ export default function App() {
   const [postAddress, setPostAddress] = useState('');
   const [geocoding, setGeocoding] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [postBudgetType, setPostBudgetType] = useState('flexible');
   const [postBudgetAmount, setPostBudgetAmount] = useState('');
   const [postExpiry, setPostExpiry] = useState('1440');
@@ -60,10 +72,11 @@ export default function App() {
   // Boot: GPS + remembered contact
   // ---------------------------------------------------------------
   useEffect(() => {
+    // Use the user's real location by default on every launch.
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-        () => console.warn('GPS unavailable, using default coords.'),
+        (pos) => saveCoords(+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)),
+        () => console.warn('GPS unavailable, using last-known / default coords.'),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     }
@@ -118,6 +131,12 @@ export default function App() {
     }
   };
 
+  // Update current location and remember it for next launch.
+  const saveCoords = (lat, lon) => {
+    setCoords({ lat, lon });
+    try { localStorage.setItem(COORDS_STORE, JSON.stringify({ lat, lon })); } catch { /* ignore */ }
+  };
+
   // ---------------------------------------------------------------
   // Reverse geocoding (server-proxied, cached)
   // ---------------------------------------------------------------
@@ -154,7 +173,7 @@ export default function App() {
       (pos) => {
         const lat = +pos.coords.latitude.toFixed(6);
         const lon = +pos.coords.longitude.toFixed(6);
-        setCoords({ lat, lon });
+        saveCoords(lat, lon);
         setPostLat(lat);
         setPostLon(lon);
         reverseGeocode(lat, lon);
@@ -194,6 +213,7 @@ export default function App() {
 
   const handlePublishPost = async (e) => {
     e.preventDefault();
+    if (submitting) return; // guard against double-submit
     if (!postTitle.trim()) { addToast(t('toast_need_title')); return; }
     if (!postPhone.trim()) { addToast(t('toast_need_phone')); return; }
 
@@ -201,6 +221,7 @@ export default function App() {
       localStorage.setItem(CONTACT_STORE, JSON.stringify({ name: postName, phone: postPhone }));
     } catch { /* ignore */ }
 
+    setSubmitting(true);
     try {
       const res = await fetch('/api/posts', {
         method: 'POST',
@@ -233,6 +254,8 @@ export default function App() {
       }
     } catch (err) {
       addToast(t('toast_network'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -377,14 +400,11 @@ export default function App() {
         onClose={() => setShowPostSheet(false)}
         title={postType === 'offer' ? t('post_offer_title') : t('post_request_title')}
       >
-        <div className="role-selector-tab">
-          <button type="button" className={`btn btn-secondary w-50 ${postType === 'request' ? 'active' : ''}`} onClick={() => setPostType('request')}>
-            {t('post_type_request')}
-          </button>
-          <button type="button" className={`btn btn-secondary w-50 ${postType === 'offer' ? 'active' : ''}`} onClick={() => setPostType('offer')}>
-            {t('post_type_offer')}
-          </button>
-        </div>
+        {/* The type (request vs offer) is chosen at the entry point, so the sheet
+            goes straight into the form — no redundant toggle. */}
+        <p className="sheet-desc post-type-note">
+          {postType === 'offer' ? t('post_offer_note') : t('post_request_note')}
+        </p>
 
         <form onSubmit={handlePublishPost}>
           {postStep === 1 && (
@@ -511,8 +531,10 @@ export default function App() {
               </div>
 
               <div className="d-flex justify-between gap-2 mt-3">
-                <button type="button" className="btn btn-outline w-45" onClick={() => setPostStep(2)}>⬅️ {t('back')}</button>
-                <button type="submit" className="btn btn-primary w-45">{t('post_publish')}</button>
+                <button type="button" className="btn btn-outline w-45" onClick={() => setPostStep(2)} disabled={submitting}>⬅️ {t('back')}</button>
+                <button type="submit" className="btn btn-primary w-45" disabled={submitting}>
+                  {submitting ? <><span className="btn-spinner" aria-hidden="true"></span>{t('posting')}</> : t('post_publish')}
+                </button>
               </div>
             </div>
           )}

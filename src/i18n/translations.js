@@ -56,7 +56,7 @@ const en = {
 
   // roles
   role_customer: 'Customer',
-  role_provider: 'Helper',
+  role_provider: 'Mteja',
   badge_customer: '💎 Customer',
   badge_provider: '⚡ Helper',
 
@@ -268,6 +268,9 @@ const en = {
   time_ago: 'ago',
   time_now: 'just now',
   locating: '📍 Locating…',
+  posting: 'Posting…',
+  post_request_note: 'Tell us what you need — someone nearby will reach out.',
+  post_offer_note: 'Describe the service you offer — people nearby will find you.',
   toast_gps_denied: '⚠️ Location permission denied. Drag the pin to your spot.',
   toast_gps_unavailable: '⚠️ Couldn’t get your location. Drag the pin to your spot.',
 
@@ -489,6 +492,9 @@ const sw = {
   time_ago: 'zilizopita',
   time_now: 'sasa hivi',
   locating: '📍 Inatafuta eneo…',
+  posting: 'Inachapisha…',
+  post_request_note: 'Tuambie unachohitaji — mtu wa karibu atawasiliana nawe.',
+  post_offer_note: 'Eleza huduma unayotoa — watu wa karibu watakupata.',
   toast_gps_denied: '⚠️ Ruhusa ya eneo imekataliwa. Vuta alama kwenye eneo lako.',
   toast_gps_unavailable: '⚠️ Imeshindwa kupata eneo lako. Vuta alama kwenye eneo lako.',
 
