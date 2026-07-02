@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useT } from './i18n/LanguageContext.jsx';
 import { CATEGORIES, HERO_PROMPTS } from './i18n/translations.js';
-import { categoryLabel } from './utils/format.js';
+import { categoryLabel, msUntilExpiry } from './utils/format.js';
 import LanguageToggle from './components/LanguageToggle.jsx';
 import BottomSheet from './components/BottomSheet.jsx';
 import CategoryCard from './components/CategoryCard.jsx';
@@ -49,6 +49,7 @@ export default function App() {
   const [postArea, setPostArea] = useState('');
   const [postAddress, setPostAddress] = useState('');
   const [geocoding, setGeocoding] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [postBudgetType, setPostBudgetType] = useState('flexible');
   const [postBudgetAmount, setPostBudgetAmount] = useState('');
   const [postExpiry, setPostExpiry] = useState('1440');
@@ -63,7 +64,7 @@ export default function App() {
       navigator.geolocation.getCurrentPosition(
         (pos) => setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
         () => console.warn('GPS unavailable, using default coords.'),
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     }
     try {
@@ -88,6 +89,18 @@ export default function App() {
     if (activeView === 'browse') syncPosts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, filterType, filterCategory, coords]);
+
+  // While browsing, drop expired posts locally every 20s and re-pull the fresh
+  // (server-side already excludes expired) feed each minute — so jobs auto-vanish.
+  useEffect(() => {
+    if (activeView !== 'browse') return;
+    const prune = setInterval(() => {
+      setPosts((prev) => prev.filter((p) => msUntilExpiry(p.expires_at) > 0));
+    }, 20000);
+    const refetch = setInterval(() => syncPosts(), 60000);
+    return () => { clearInterval(prune); clearInterval(refetch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView, filterType, filterCategory]);
 
   const syncPosts = async () => {
     setLoadingFeed(true);
@@ -129,11 +142,33 @@ export default function App() {
     geocodeTimer.current = setTimeout(() => reverseGeocode(lat, lon), 600);
   };
 
-  const useMyLocation = () => {
-    setPostLat(coords.lat);
-    setPostLon(coords.lon);
-    reverseGeocode(coords.lat, coords.lon);
+  // Request a fresh, high-accuracy GPS fix (must be user-initiated on mobile).
+  // On success it pins the *exact* coordinates and reverse-geocodes the area.
+  const requestGps = ({ silent = false } = {}) => {
+    if (!('geolocation' in navigator)) {
+      if (!silent) addToast(t('toast_gps_unavailable'));
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = +pos.coords.latitude.toFixed(6);
+        const lon = +pos.coords.longitude.toFixed(6);
+        setCoords({ lat, lon });
+        setPostLat(lat);
+        setPostLon(lon);
+        reverseGeocode(lat, lon);
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        if (!silent) addToast(err.code === 1 ? t('toast_gps_denied') : t('toast_gps_unavailable'));
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+    );
   };
+
+  const useMyLocation = () => requestGps();
 
   // ---------------------------------------------------------------
   // Post creation
@@ -152,6 +187,9 @@ export default function App() {
     setPostBudgetAmount('');
     setPostExpiry('1440');
     setShowPostSheet(true);
+    // Auto-capture the user's real location (this call rides the tap gesture, so
+    // mobile browsers will honour the permission prompt).
+    requestGps({ silent: true });
   };
 
   const handlePublishPost = async (e) => {
@@ -305,13 +343,12 @@ export default function App() {
             </div>
 
             <div className="post-list mt-3">
-              {loadingFeed ? (
-                <Skeleton count={4} />
-              ) : posts.length === 0 ? (
-                <div className="empty-state">{t('no_posts')}</div>
-              ) : (
-                posts.map((p) => <PostCard key={p.id} post={p} t={t} />)
-              )}
+              {(() => {
+                if (loadingFeed) return <Skeleton count={4} />;
+                const live = posts.filter((p) => msUntilExpiry(p.expires_at) > 0);
+                if (live.length === 0) return <div className="empty-state">{t('no_posts')}</div>;
+                return live.map((p) => <PostCard key={p.id} post={p} t={t} />);
+              })()}
             </div>
           </section>
         )}
@@ -403,7 +440,14 @@ export default function App() {
             <div className="task-step active">
               <h4 className="step-subtitle">{t('location_step')}</h4>
               <p className="sheet-desc">{t('location_hint')}</p>
-              <MapPicker lat={postLat} lon={postLon} onChange={handlePinChange} />
+              <MapPicker
+                lat={postLat}
+                lon={postLon}
+                onChange={handlePinChange}
+                onLocate={useMyLocation}
+                locating={locating}
+                locateLabel={t('use_my_location')}
+              />
               <div className="form-group mt-2">
                 <label>{t('area_name')}</label>
                 <input
@@ -414,7 +458,9 @@ export default function App() {
                   placeholder={geocoding ? t('area_placeholder') : t('area_name')}
                 />
               </div>
-              <button type="button" className="btn btn-outline btn-sm w-100" onClick={useMyLocation}>{t('use_my_location')}</button>
+              <button type="button" className="btn btn-outline btn-sm w-100" onClick={useMyLocation} disabled={locating}>
+                {locating ? t('locating') : t('use_my_location')}
+              </button>
               <div className="d-flex justify-between gap-2 mt-3">
                 <button type="button" className="btn btn-outline w-45" onClick={() => setPostStep(1)}>⬅️ {t('back')}</button>
                 <button type="button" className="btn btn-primary w-45" onClick={() => setPostStep(3)}>{t('next_budget')}</button>

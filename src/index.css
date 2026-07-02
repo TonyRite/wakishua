@@ -93,7 +93,11 @@ h1, h2, h3, h4 {
      (64px nav + safe-area + breathing room). */
   padding: 16px 16px calc(96px + env(safe-area-inset-bottom)) 16px;
   position: relative;
+  /* Use the dynamic viewport height on mobile so the scroll container matches the
+     *visible* area (accounts for the browser toolbar). Without this, `100vh` is too
+     tall and the bottom of short pages gets stuck behind the nav / below the fold. */
   height: calc(100vh - 56px);
+  height: calc(100dvh - 56px);
 }
 
 /* Bottom Navigation Bar */
@@ -1177,6 +1181,28 @@ input:checked + .slider:before {
 
 .map-canvas-sm { height: 130px; }
 
+/* Locate-me button floating over the picker */
+.map-wrap { position: relative; }
+.map-locate-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 500;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--color-white);
+  box-shadow: 0 2px 8px rgba(11, 30, 54, 0.28);
+  font-size: 1.15rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-locate-btn:active { transform: scale(0.92); }
+.map-locate-btn:disabled { opacity: 0.7; cursor: default; }
+
 .map-view-wrap { position: relative; }
 
 .map-view-label {
@@ -1335,6 +1361,22 @@ input:checked + .slider:before {
 .post-badge-offer { background-color: var(--color-seafoam); color: var(--color-teal); }
 
 .post-time { font-size: 0.78rem; color: var(--color-gray); font-weight: 600; }
+
+/* Time-until-expiry chip (highlighted) */
+.post-expiry {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #E65100;
+  background-color: #FFF3E0;
+  padding: 3px 9px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+.post-expiry.urgent {
+  color: #C62828;
+  background-color: #FDECEA;
+}
+.post-posted { color: var(--color-gray); }
 
 .post-title {
   font-size: 1.05rem;
